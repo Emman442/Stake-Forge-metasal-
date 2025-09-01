@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,10 +12,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, Palette, Wand2 } from "lucide-react";
 
+const TABS = ["token", "rewards", "settings", "customization"];
+
 export default function PoolBuilder() {
+  const [currentTab, setCurrentTab] = useState(TABS[0]);
+
+  const handleNext = () => {
+    const currentIndex = TABS.indexOf(currentTab);
+    if (currentIndex < TABS.length - 1) {
+      setCurrentTab(TABS[currentIndex + 1]);
+    }
+  };
+
+  const handlePrevious = () => {
+    const currentIndex = TABS.indexOf(currentTab);
+    if (currentIndex > 0) {
+      setCurrentTab(TABS[currentIndex - 1]);
+    }
+  };
+
   return (
     <Card className="max-w-4xl mx-auto bg-secondary/30 backdrop-blur-sm card-glow">
-      <Tabs defaultValue="token">
+      <Tabs value={currentTab} onValueChange={setCurrentTab}>
         <div className="p-6 border-b">
            <TabsList className="grid w-full grid-cols-4 bg-background/50">
             <TabsTrigger value="token">1. Token</TabsTrigger>
@@ -172,8 +191,25 @@ export default function PoolBuilder() {
             </div>
         </TabsContent>
 
-        <CardFooter className="p-6">
-          <Button size="lg" className="w-full button-glow">Create Pool & Deploy</Button>
+        <CardFooter className="p-6 flex justify-between">
+          <div>
+            {currentTab !== TABS[0] && (
+              <Button variant="outline" onClick={handlePrevious}>
+                Previous
+              </Button>
+            )}
+          </div>
+          <div>
+            {currentTab !== TABS[TABS.length - 1] ? (
+              <Button onClick={handleNext}>
+                Next
+              </Button>
+            ) : (
+              <Button size="lg" className="button-glow">
+                Create Pool & Deploy
+              </Button>
+            )}
+          </div>
         </CardFooter>
       </Tabs>
     </Card>
