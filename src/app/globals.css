@@ -4,29 +4,6 @@
 
 @layer base {
   :root {
-    --background: 192 60% 95%; /* Light Cyan */
-    --foreground: 202 51% 15%; /* Dark Blue */
-    --card: 0 0% 100%;
-    --card-foreground: 202 51% 15%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 202 51% 15%;
-    --primary: 180 82% 35%; /* Teal */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 192 60% 90%;
-    --secondary-foreground: 202 51% 25%;
-    --muted: 192 60% 90%;
-    --muted-foreground: 202 51% 45%;
-    --accent: 180 82% 40%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 192 60% 85%;
-    --input: 192 60% 85%;
-    --ring: 180 82% 35%;
-    --radius: 0.5rem;
-  }
- 
-  .dark {
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
     --card: 222 47% 11%;
@@ -46,6 +23,29 @@
     --border: 170 50% 30%;
     --input: 170 50% 30%;
     --ring: 170 100% 50%;
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: 216 33% 15%;
+    --foreground: 210 40% 98%;
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+    --popover: 216 33% 15%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 168 100% 45%;
+    --primary-foreground: 216 33% 10%;
+    --secondary: 217 33% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 25%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 170 100% 50%;
+    --accent-foreground: 216 33% 10%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 170 50% 30%;
+    --input: 170 50% 30%;
+    --ring: 170 100% 50%;
   }
 }
 
@@ -55,9 +55,11 @@
   }
   body {
     @apply bg-background text-foreground;
+    background: linear-gradient(to bottom, hsl(216, 33%, 15%), hsl(180, 70%, 17%));
     background-image:
-      radial-gradient(hsl(var(--foreground) / 0.1) 1px, transparent 1px);
-    background-size: 16px 16px;
+      radial-gradient(hsl(var(--foreground) / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(216, 33%, 15%), hsl(180, 70%, 17%));
+    background-size: 16px 16px, 100% 100%;
     min-height: 100vh;
   }
 }
