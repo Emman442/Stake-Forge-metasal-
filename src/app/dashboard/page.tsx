@@ -4,6 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, Link as LinkIcon, Users, PlusCircle } from "lucide-react";
 import Link from "next/link";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 const createdPools = [
   { id: '1', name: 'My Awesome Pool', tvl: 1250345.67, stakers: 432, status: 'Live' },
