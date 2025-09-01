@@ -8,7 +8,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Wallet } from 'lucide-react';
-import Image from 'next/image';
 
 const wallets = [
   { name: 'Phantom', icon: '/phantom-icon.svg' },
@@ -28,9 +27,9 @@ export function WalletConnect() {
           Connect Wallet
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 bg-secondary border-accent/20">
+      <DropdownMenuContent align="end" className="w-56 bg-card border-border">
         {wallets.map((wallet) => (
-          <DropdownMenuItem key={wallet.name} className="focus:bg-accent/50 focus:text-white">
+          <DropdownMenuItem key={wallet.name} className="focus:bg-secondary focus:text-secondary-foreground">
              <Wallet className="mr-2 h-4 w-4" />
             <span>{wallet.name}</span>
           </DropdownMenuItem>

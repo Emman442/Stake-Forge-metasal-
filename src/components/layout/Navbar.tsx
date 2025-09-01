@@ -9,19 +9,19 @@ export function Navbar() {
       <div className="container flex h-14 items-center">
         <div className="mr-4 flex items-center">
           <Link href="/" className="mr-6 flex items-center space-x-2">
-            <CodeXml className="h-6 w-6 text-accent" />
-            <span className="font-bold font-headline text-glow">StakingForge</span>
+            <CodeXml className="h-6 w-6 text-primary" />
+            <span className="font-bold font-headline text-foreground">StakingForge</span>
           </Link>
           <nav className="hidden items-center space-x-6 text-sm font-medium md:flex">
             <Link
               href="/create"
-              className="transition-colors hover:text-accent"
+              className="transition-colors hover:text-primary text-muted-foreground"
             >
               Create Pool
             </Link>
             <Link
               href="/dashboard"
-              className="transition-colors hover:text-accent"
+              className="transition-colors hover:text-primary text-muted-foreground"
             >
               Dashboard
             </Link>

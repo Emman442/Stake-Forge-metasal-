@@ -4,25 +4,25 @@
 
 @layer base {
   :root {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 168 100% 45%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 217 33% 15%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 15%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 170 100% 50%;
-    --accent-foreground: 222 47% 11%;
+    --background: 192 60% 95%; /* Light Cyan */
+    --foreground: 202 51% 15%; /* Dark Blue */
+    --card: 0 0% 100%;
+    --card-foreground: 202 51% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 202 51% 15%;
+    --primary: 180 82% 35%; /* Teal */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 192 60% 90%;
+    --secondary-foreground: 202 51% 25%;
+    --muted: 192 60% 90%;
+    --muted-foreground: 202 51% 45%;
+    --accent: 180 82% 40%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 170 50% 30%;
-    --input: 170 50% 30%;
-    --ring: 170 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 192 60% 85%;
+    --input: 192 60% 85%;
+    --ring: 180 82% 35%;
     --radius: 0.5rem;
   }
  
@@ -54,14 +54,10 @@
     @apply border-border;
   }
   body {
-    @apply bg-[#1a2332] text-foreground;
-    background-image: 
-      linear-gradient(to bottom right, #1a2332, #0d4d4d),
-      radial-gradient(ellipse at top, transparent 50%, hsl(var(--accent) / 0.1)),
-      radial-gradient(ellipse at bottom, hsl(var(--primary) / 0.1), transparent 50%),
-      repeating-conic-gradient(from 45deg, hsl(var(--border) / 0.1) 0% 25%, transparent 0% 50%);
-    background-size: 100% 100%, 100% 100%, 100% 100%, 64px 64px;
-    background-blend-mode: normal, screen, screen, normal;
+    @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(hsl(var(--foreground) / 0.1) 1px, transparent 1px);
+    background-size: 16px 16px;
     min-height: 100vh;
   }
 }
