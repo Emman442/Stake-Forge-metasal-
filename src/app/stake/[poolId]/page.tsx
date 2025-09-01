@@ -1,9 +1,20 @@
-import UserDashboard from "@/components/staking/UserDashboard";
+import { CustomStakingPage } from "@/components/staking/CustomStakingPage";
 
 export default function StakePoolPage({ params }: { params: { poolId: string } }) {
+  // In a real app, you would fetch pool data based on the poolId
+  const poolData = {
+    id: params.poolId,
+    name: "Supa Staking",
+    tokenSymbol: "SUPA",
+    headerImage: "https://picsum.photos/1200/400",
+    socials: {
+      twitter: "#",
+      discord: "#",
+      telegram: "#",
+    }
+  };
+
   return (
-    <div className="container mx-auto px-4 py-16 sm:py-24">
-      <UserDashboard poolId={params.poolId} />
-    </div>
+    <CustomStakingPage pool={poolData} />
   );
 }
