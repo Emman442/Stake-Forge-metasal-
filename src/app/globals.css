@@ -77,3 +77,12 @@
      @apply shadow-[0_0_20px_-5px_hsl(var(--primary))];
   }
 }
+
+.wallet-button button:hover {
+  border: 2px solid grey !important;
+  color: #0c84751a !important;
+  background: transparent !important;
+  
+  font-family: 'Inter', sans-serif !important;
+}
+
