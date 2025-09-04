@@ -8,7 +8,7 @@ export default function CreatePoolPage() {
           Staking Pool Builder
         </h1>
         <p className="mt-4 text-lg leading-8 text-muted-foreground max-w-3xl mx-auto">
-          Create a custom staking contract on Solana in minutes. No code required.
+          Create a custom staking protocol on Solana in minutes. No code required.
         </p>
       </section>
       <section className="mt-12">

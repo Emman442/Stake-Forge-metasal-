@@ -1,10 +1,9 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { Toaster } from '@/components/ui/toaster';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import AppWalletProvider from '@/providers/AppWalletProvider';
-
+import {Toaster} from "react-hot-toast";
 export const metadata: Metadata = {
   title: 'StakingForge',
   description: 'Create Your Token Staking Protocol on Solana - FOR FREE',

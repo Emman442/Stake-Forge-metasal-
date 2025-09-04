@@ -41,7 +41,7 @@ export default function Home() {
         <section className="py-20 sm:py-32">
           <div className="container mx-auto px-4 text-center">
             <h1 className="text-4xl font-bold tracking-tight text-glow sm:text-6xl font-headline">
-              CREATE SOLANA NFT STAKING
+              CREATE SOLANA STAKING PROTOCOL FOR FEE
             </h1>
             <p className="mt-6 text-lg leading-8 text-muted-foreground max-w-2xl mx-auto">
               With our Staking Builder you will be able to create your Custom Staking Site of your Token in Solana within 5 minutes and 0 coding.
