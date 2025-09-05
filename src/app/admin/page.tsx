@@ -69,7 +69,7 @@ export default function AdminDashboardPage() {
 
   if (!publicKey || !program) {
     return (
-      <div className="min-h-screen `justify-center flex items-center ">
+      <div className="min-h-screen justify-center flex items-center ">
         <div className="flex flex-col gap-2 justify-center items-center">
           <p>Please Connect your wallet to continue!</p>
           <WalletMultiButton />

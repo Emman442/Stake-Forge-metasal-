@@ -1,21 +1,15 @@
 "use client"
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { CustomStakingPage } from "@/components/staking/CustomStakingPage";
 import { useProgram } from "@/hooks/use-program";
-import { PublicKey } from "@solana/web3.js";
 import { use, useEffect, useState } from "react";
 
   export default function StakePoolPage({ params }: { params: Promise<{ poolId: string }> }) {
-    // In a real app, you would fetch pool data based on the poolId
     const { program } = useProgram();
     const [poolData, setPoolData] = useState<any>(null);
     const { poolId } = use(params);
 
     const [pools, setPools] = useState<any[]>([]);
-
-    // const [stakingPoolPda, stakingPoolbump] = PublicKey.findProgramAddressSync(
-    //   [Buffer.from("stakingpool"), new PublicKey(poolId).toBuffer()],
-    //   program?.programId
-    // );
 
     useEffect(() => {
       if (!program) return; 
@@ -57,6 +51,13 @@ import { use, useEffect, useState } from "react";
     return poolData ? (
       <CustomStakingPage pool={poolData} />
     ) : (
-      <div>Loading...</div>
+      <div className="flex items-center justify-center min-h-screen w-full">
+        <div className="flex flex-col gap-2">
+          <LoadingSpinner size="lg" />
+          <p className="text-center text-white text-xl">
+            Please wait while we fetch this staking pool...
+          </p>
+        </div>
+      </div>
     );
   }

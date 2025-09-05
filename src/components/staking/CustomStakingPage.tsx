@@ -11,10 +11,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatDate } from "@/helpers/formatDate";
 import { formatNumber } from "@/helpers/formatNumber";
 import { getTokenBalance } from "@/helpers/getTokenBalance";
 import { ipfsToHttp } from "@/helpers/ipfstohttp";
 import { useProgram } from "@/hooks/use-program";
+import { usePostData } from "@/hooks/usePostData";
 import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import {
   getOrCreateAssociatedTokenAccount,
@@ -27,12 +29,15 @@ import {
   PublicKey,
   SystemProgram,
 } from "@solana/web3.js";
-import cluster from "cluster";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { FaDiscord, FaStackExchange, FaXTwitter } from "react-icons/fa6";
+import { LoadingSpinner } from "../common/LoadingSpinner";
+import { useFetchActivity } from "@/hooks/useFetchActivity";
+import { ExternalLink } from "lucide-react";
+import { truncateHash } from "@/helpers/truncateHash";
 
 export interface PoolConfigInterfaceMetadata {
   creator: string;
@@ -72,6 +77,8 @@ export function CustomStakingPage({
   const [userDetails, setUserDetails] = useState<any>();
   const [lockupDuration, setLockupDuration] = useState<number>(7);
   const [unstakeAmount, setUnstakeAmount] = useState<number>(0);
+  const { mutate } = usePostData();
+
   const connection = new Connection(clusterApiUrl("devnet"), {
     commitment: "confirmed",
   });
@@ -81,10 +88,20 @@ export function CustomStakingPage({
     preflightCommitment: "processed",
   });
 
+  const { data, isLoading, error } = useFetchActivity(publicKey!);
+  const { program } = useProgram();
+  if (!program || !publicKey) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-gray-400">
+        Please connect your wallet to continue
+      </div>
+    );
+  }
+  console.log(data)
+
   const src = ipfsToHttp(
     "ipfs://bafkreic74ql7l75uoudr3rrtbzdftacf2r6rqscxhywpcidxwabrjxtuve"
   );
-  const { program } = useProgram();
 
   const [stakingPoolPda, stakingPoolbump] = useMemo(() => {
     return PublicKey.findProgramAddressSync(
@@ -175,7 +192,11 @@ export function CustomStakingPage({
     return userDetails?.pendingRewards.toNumber() + newRewards;
   }
 
-  if (!userDetails || !poolDetails) return;
+  const lockupDurationSeconds = userDetails?.lockupDuration.toNumber();
+  const no_of_days = lockupDurationSeconds / (24 * 60 * 60);
+  const startTimeSec = userDetails?.startTime.toNumber();
+  const endTimeSec = startTimeSec + lockupDurationSeconds;
+  const endDate = new Date(endTimeSec * 1000);
 
   function calculateDailyReward(tokensStaked: number) {
     if (!poolDetails) return 0;
@@ -186,7 +207,6 @@ export function CustomStakingPage({
       secondsInDay
     );
   }
-
   const claimable = calculateClaimable() / 10 ** poolDetails?.decimals;
   const canClaim = claimable > 0;
 
@@ -265,11 +285,24 @@ export function CustomStakingPage({
         const decoded = program.coder.events.decode(encoded);
         if (decoded?.name === "tokensStaked") {
           setIsStaking(false);
+
+          const newActivity = {
+            user: publicKey.toString(),
+            action: "stake",
+            amount: stakeAmount,
+            lock_time: no_of_days.toString(),
+            timestamp: startTimeSec,
+            transaction: tx,
+          };
+
+          mutate(newActivity);
+
           toast.success("You've successfully deposited tokens!");
           return;
         }
       }
     } catch (error) {
+      console.log(error)
       setIsStaking(false);
       toast.error("Transaction failed. Please try again.");
     } finally {
@@ -278,6 +311,8 @@ export function CustomStakingPage({
   };
   const handleClaim = async () => {
     if (!program || !publicKey) return;
+    const global_statee = await program.account.globalState.fetch(globalStatePda)
+    console.log("global State: ", global_statee.platformFeeVault.toString());
     try {
       setIsClaiming(true);
       const stakeAccount = await getStakeAccount();
@@ -287,6 +322,7 @@ export function CustomStakingPage({
           [Buffer.from("reward_vault"), stakingPoolPda.toBuffer()],
           program.programId
         );
+        console.log(rewardVaultPda.toString());
       const tx = await program.methods
         .claimRewards()
         .accounts({
@@ -323,6 +359,15 @@ export function CustomStakingPage({
         const decoded = program.coder.events.decode(encoded);
         if (decoded?.name === "rewardsClaimed") {
           setIsClaiming(false);
+          const newActivity = {
+            action: "claim",
+            user: publicKey.toString(),
+            amount: claimable,
+            // lockTime: null,
+            timestamp: Math.floor(Date.now() / 1000),
+            transaction: tx,
+          };
+          mutate(newActivity);
           toast.success("You've successfully claimed your rewards!");
           return;
         }
@@ -338,11 +383,14 @@ export function CustomStakingPage({
   };
   const handleUnstake = async () => {
     if (!program || !publicKey) return;
+    if(!unstakeAmount){
+      toast.error("Enter amount to unstake")
+    }
     const stakeAccount = await getStakeAccount();
     try {
       setIsUnstaking(true);
       const tx = await program.methods
-        .unstake(new BN(500))
+        .unstake(new BN(unstakeAmount * 10 ** poolDetails.decimals))
         .accounts({
           //@ts-ignore
           user_stake: userStakePda,
@@ -372,7 +420,19 @@ export function CustomStakingPage({
         const encoded = eventLog.replace("Program data: ", "");
         const decoded = program.coder.events.decode(encoded);
         if (decoded?.name === "tokensUnstaked") {
-          setIsClaiming(false);
+          setIsUnstaking(false);
+
+          const newActivity = {
+            user: publicKey.toString(),
+            action: "unstake",
+            amount: unstakeAmount,
+            // lockTime: null,
+            timestamp: Math.floor(Date.now() / 1000),
+            transaction: tx,
+          };
+
+          mutate(newActivity);
+
           toast.success("You've successfully claimed your rewards!");
           return;
         }
@@ -386,7 +446,24 @@ export function CustomStakingPage({
     }
   };
 
-  if (!program || !publicKey) return;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen w-full">
+        <div className="flex gap-2 flex-col">
+          <LoadingSpinner size="lg" />
+          <p>Please wait while we load your pool</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userDetails || !poolDetails) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-gray-400">
+        Loading user or pool details...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen text-white font-body">
@@ -456,7 +533,7 @@ export function CustomStakingPage({
               <div>
                 {calculateDailyReward(
                   userDetails?.amount.toNumber() / 10 ** poolDetails?.decimals
-                )}{" "}
+                ).toFixed(5)}{" "}
                 {pool.tokenSymbol}/day
               </div>
             </div>
@@ -514,10 +591,10 @@ export function CustomStakingPage({
                 </div>
                 <div className="flex justify-between items-end mt-1">
                   <Input
-                    type="text"
+                    type="number"
                     placeholder="0"
+                    min="0"
                     className="bg-transparent border-none outline-none text-2xl font-bold p-0 h-auto focus-visible:ring-0"
-                    defaultValue={0}
                     value={stakeAmount}
                     onChange={(e) => {
                       setStakeAmount(Number(e.target.value));
@@ -584,7 +661,9 @@ export function CustomStakingPage({
                 <div className="flex justify-between items-center text-sm">
                   <span>Unstake</span>
                   <span className="text-gray-400">
-                    7 days (09/08/2025 16:11)
+                    {no_of_days} days (
+                    {formatDate(new Date(startTimeSec * 1000))} →{" "}
+                    {formatDate(endDate)})
                   </span>
                 </div>
                 <div className="flex justify-between items-end mt-1">
@@ -601,6 +680,12 @@ export function CustomStakingPage({
                         variant="outline"
                         size="sm"
                         className="text-xs h-6 px-2 border-gray-600 hover:bg-gray-700"
+                        onClick={() =>
+                          setUnstakeAmount(
+                            userDetails?.amount.toNumber() /
+                              10 ** poolDetails?.decimals
+                          )
+                        }
                       >
                         Max
                       </Button>
@@ -608,6 +693,13 @@ export function CustomStakingPage({
                         variant="outline"
                         size="sm"
                         className="text-xs h-6 px-2 border-gray-600 hover:bg-gray-700"
+                        onClick={() =>
+                          setUnstakeAmount(
+                            userDetails?.amount.toNumber() /
+                              10 ** poolDetails?.decimals /
+                              2
+                          )
+                        }
                       >
                         Half
                       </Button>
@@ -629,10 +721,10 @@ export function CustomStakingPage({
               <Button
                 size="lg"
                 className="w-full bg-gray-700 hover:bg-gray-600"
-                disabled={unstakeAmount === null}
+                disabled={unstakeAmount <= 0}
                 onClick={handleUnstake}
               >
-                Unstake
+                {isUnstaking ? "Unstaking..." : "Unstake"}
               </Button>
             </CardContent>
           </Card>
@@ -657,14 +749,58 @@ export function CustomStakingPage({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow className="border-gray-800">
-                    <TableCell
-                      colSpan={4}
-                      className="text-center text-gray-500 py-8"
-                    >
-                      No activity yet
-                    </TableCell>
-                  </TableRow>
+                  {!data || data.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        className="text-center text-gray-500 py-8"
+                      >
+                        No Activity yet!
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    data.map((activity, idx) => (
+                      <TableRow
+                        key={idx}
+                        className="border-gray-800 hover:bg-gray-800/30"
+                      >
+                        <TableCell>{activity.action}</TableCell>
+                        <TableCell>{activity.amount.toFixed(5)}</TableCell>
+                        <TableCell className="pl-2">
+                          {activity.action === "stake" ? (
+                            <>
+                              {`${
+                                activity.lock_time
+                              } days - ${formatDate(
+                                new Date(activity.timestamp * 1000)
+                              )}`}
+                            </>
+                          ) : (
+                            formatDate(new Date(activity.timestamp * 1000)) ?? (
+                              <span className="pl-14">-</span>
+                            )
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          <a
+                            href={`https://explorer.solana.com/tx/${activity.transaction}?cluster=devnet`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:underline"
+                          >
+                            <Link
+                              href={`https://solscan.io/tx/${activity.transaction}?cluster=devnet`}
+                              className="flex items-center gap-1 hover:text-primary transition-colors"
+                            >
+                              {truncateHash(activity.transaction)}
+                              <ExternalLink className="h-4 w-4" />
+                            </Link>
+                          </a>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>

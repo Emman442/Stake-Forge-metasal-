@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: 'Create Your Token Staking Protocol on Solana - FOR FREE',
 };
 
+
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,14 +31,16 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <AppWalletProvider>
-          <div className="relative flex min-h-screen flex-col">
-            <Navbar />
-            <main className="flex-1">{children}</main>
-            <Footer />
-          </div>
-          <Toaster />
-        </AppWalletProvider>
+
+          <AppWalletProvider>
+            <div className="relative flex min-h-screen flex-col">
+              <Navbar />
+              <main className="flex-1">{children}</main>
+              <Footer />
+            </div>
+            <Toaster />
+          </AppWalletProvider>
+
       </body>
     </html>
   );
