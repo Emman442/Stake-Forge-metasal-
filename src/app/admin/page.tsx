@@ -16,7 +16,7 @@ import { useProgram } from "@/hooks/use-program";
 import { PublicKey } from "@solana/web3.js";
 import dynamic from "next/dynamic";
 import * as anchor from "@coral-xyz/anchor";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 
 const WalletMultiButton = dynamic(
   async () =>
@@ -95,7 +95,13 @@ export default function AdminDashboardPage() {
 
       setPdaExists(true);
       setIsCreatingGlobalState(false);
-      toast.success(`Global State Initialized successfully: ${tx} `);
+      toast.success("Global State Initialized successfully", {
+        cancel: {
+          label: "View Transaction",
+          onClick: () =>
+            window.open(`https://solscan.io/tx/${tx}?cluster=devnet`, "_blank"),
+        },
+      });
     } catch (error) {
       setIsCreatingGlobalState(false);
       toast.error(`Failed to Create Global State: ${error}`);
@@ -104,12 +110,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // const handleUpdateBPS = async() => {
-  //     const tx = await program.methods.updateRewardRate(new anchor.BN(2_000_000)).accounts({
-  //         globa
-  //     }).rpc
-  // }
-
+  
   return (
     <div className="container mx-auto px-4 py-16 sm:py-24">
       <section className="text-center">

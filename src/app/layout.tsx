@@ -3,11 +3,12 @@ import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import AppWalletProvider from '@/providers/AppWalletProvider';
-import {Toaster} from "react-hot-toast";
+import {Toaster} from "sonner";
 export const metadata: Metadata = {
   title: 'StakingForge',
   description: 'Create Your Token Staking Protocol on Solana - FOR FREE',
 };
+
 
 
 
@@ -38,7 +39,7 @@ export default function RootLayout({
               <main className="flex-1">{children}</main>
               <Footer />
             </div>
-            <Toaster position='top-right'/>
+            <Toaster position='bottom-right' richColors/>
           </AppWalletProvider>
 
       </body>

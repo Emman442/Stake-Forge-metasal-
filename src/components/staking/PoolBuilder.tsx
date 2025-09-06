@@ -27,7 +27,7 @@ import { useProgram } from "@/hooks/use-program";
 import { useWallet } from "@solana/wallet-adapter-react";
 import dynamic from "next/dynamic";
 import { clusterApiUrl, Connection, PublicKey } from "@solana/web3.js";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 const WalletMultiButton = dynamic(
   async () =>
     (await import("@solana/wallet-adapter-react-ui")).WalletMultiButton,
@@ -75,7 +75,8 @@ export default function PoolBuilder() {
     const secondsIn30Days = 30 * 24 * 60 * 60;
     const totalReward =
       (((poolConfig.rewardRate * tokensStaked) / 10 ** decimals!) *
-      secondsIn30Days)/10**4;
+        secondsIn30Days) /
+      10 ** 4;
     return totalReward.toLocaleString(undefined, { maximumFractionDigits: 2 });
   };
 
@@ -151,16 +152,20 @@ export default function PoolBuilder() {
   const handlePoolAndDeploy = async () => {
     if (!program || !publicKey) return;
 
-   const allPools = await program.account.stakingPool.all();
+    const allPools = await program.account.stakingPool.all();
 
-   const filteredPools = allPools.filter(
-     (pool) => pool.account.tokenSymbol.toLowerCase() === poolConfig.tokenSymbol.toLowerCase()
-   );
+    const filteredPools = allPools.filter(
+      (pool) =>
+        pool.account.tokenSymbol.toLowerCase() ===
+        poolConfig.tokenSymbol.toLowerCase()
+    );
 
-   if(filteredPools.length > 0){
-    toast.error("A pool with this token symbol already exists. try creating a pool with a different token.");
-    return;
-   }
+    if (filteredPools.length > 0) {
+      toast.error(
+        "A pool with this token symbol already exists. try creating a pool with a different token."
+      );
+      return;
+    }
 
     if (
       !poolConfig.tokenMint ||
@@ -168,7 +173,7 @@ export default function PoolBuilder() {
       !poolConfig.poolDescription ||
       !poolConfig.adminFee
     ) {
-      alert("Please fill in all required fields.");
+      toast.info("Please fill in all required fields.");
       return;
     }
     setIsCreatingPool(true);
@@ -234,11 +239,17 @@ export default function PoolBuilder() {
 
       const program_config = {
         rewardRatePerTokenPerSecond: new anchor.BN(poolConfig.rewardRate), // e.g., 0.001 tokens/sec
-        minStakeAmount: new anchor.BN(Number(poolConfig.minStake)* 10**decimals!),
-        maxStakePerUser: new anchor.BN(Number(poolConfig.maxStakeUser)* 10**decimals!),
+        minStakeAmount: new anchor.BN(
+          Number(poolConfig.minStake) * 10 ** decimals!
+        ),
+        maxStakePerUser: new anchor.BN(
+          Number(poolConfig.maxStakeUser) * 10 ** decimals!
+        ),
         minStakeDuration: new anchor.BN(60),
         earlyWithdrawalPenaltyBps: new anchor.BN(poolConfig.penalty),
-        maxPoolSize: new anchor.BN(Number(poolConfig.maxSize)* 10**decimals!),
+        maxPoolSize: new anchor.BN(
+          Number(poolConfig.maxSize) * 10 ** decimals!
+        ),
         lockPeriod: null,
         poolName: poolConfig.poolName,
         poolDescription: poolConfig.poolDescription,
@@ -278,12 +289,21 @@ export default function PoolBuilder() {
         const decoded = program.coder.events.decode(encoded);
         if (decoded?.name === "poolCreated") {
           setIsCreatingPool(false);
-          toast.success("You've successfully created a staking vault.");
+          toast.success("You've successfully created a staking vault.", {
+            cancel: {
+              label: "View Transaction",
+              onClick: () =>
+                window.open(
+                  `https://solscan.io/tx/${tx}?cluster=devnet`,
+                  "_blank"
+                ),
+            },
+          });
           return;
         }
       }
+      setIsCreatingPool(false)
       return metadataUri;
-      setIsCreatingPool(false);
     } catch (error) {
       setIsCreatingPool(false);
       console.error("Error deploying pool:", error);
@@ -657,7 +677,7 @@ export default function PoolBuilder() {
                 disabled={isCreatingPool}
                 onClick={handlePoolAndDeploy}
               >
-                {isCreatingPool? "Creating..." : "Create Pool & Deploy"}
+                {isCreatingPool ? "Creating..." : "Create Pool & Deploy"}
               </Button>
             )}
           </div>

@@ -25,6 +25,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { set } from "date-fns";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 export default function DashboardPage() {
   
@@ -89,6 +90,27 @@ export default function DashboardPage() {
    fetchMyPools();
  }, [program, publicKey]);
 
+ if(!publicKey){
+  return (
+    <div className="min-h-screen flex justify-center items-center">
+      <div className="container mx-auto px-4 py-16 sm:py-24 flex flex-col items-center justify-center gap-2">
+        <p>Please Connect your wallet to access your pools. </p>
+        <WalletMultiButton
+          style={{
+            background: "transparent",
+            height: "40px",
+            padding: "0 16px 0 40px",
+            fontSize: "14px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            color: "#00E6B8",
+            border: "1px solid #00E6B8",
+          }}
+        />
+      </div>
+    </div>
+  );
+ }
 
   if (loading) {
     return (

@@ -16,7 +16,7 @@ import { useProgram } from "@/hooks/use-program";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { BN } from "@coral-xyz/anchor";
 import * as anchor from "@coral-xyz/anchor";
-import toast from "react-hot-toast";
+import{toast} from "sonner";
 import { clusterApiUrl, Connection, PublicKey } from "@solana/web3.js";
 import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 
@@ -97,7 +97,7 @@ export default function PoolAdminPage({
   const handleFundPool = async () => {
     if (!program || !publicKey) return;
     if (!fundAmount) {
-      toast.error("Fund Amount is Empty!");
+      toast.info("Fund Amount is Empty!");
       return;
     }
 
@@ -168,7 +168,16 @@ export default function PoolAdminPage({
         const encoded = eventLog.replace("Program data: ", "");
         const decoded = program.coder.events.decode(encoded);
         if (decoded?.name === "poolFunded") {
-          toast.success("You've successfully Funded the Pool!");
+          toast.success("You've sucessfully Funded your pool!", {
+            cancel: {
+              label: "View Transaction",
+              onClick: () =>
+                window.open(
+                  `https://solscan.io/tx/${tx}?cluster=devnet`,
+                  "_blank"
+                ),
+            },
+          });
           return;
         }
       }
@@ -184,12 +193,10 @@ export default function PoolAdminPage({
     <div className="container mx-auto px-4 py-16 sm:py-24">
       <section className="text-center">
         <h1 className="text-4xl font-bold tracking-tight text-glow sm:text-5xl font-headline">
-          Pool Admin:{" "}
-          <span className="text-primary">{pool.metadata.name}</span>
+          Pool Admin: <span className="text-primary">{pool.metadata.name}</span>
         </h1>
         <p className="mt-4 text-lg leading-8 text-muted-foreground max-w-3xl mx-auto">
-          Manage the settings and funds for your staking pool. Pool ID:{" "}
-          {poolId}
+          Manage the settings and funds for your staking pool. Pool ID: {poolId}
         </p>
       </section>
 
@@ -214,7 +221,6 @@ export default function PoolAdminPage({
                     value={fundAmount}
                     onChange={(e) => setFundAmount(Number(e.target.value))}
                   />
-                 
                 </div>
               </div>
               <Button

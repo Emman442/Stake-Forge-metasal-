@@ -32,7 +32,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { FaDiscord, FaStackExchange, FaXTwitter } from "react-icons/fa6";
 import { LoadingSpinner } from "../common/LoadingSpinner";
 import { useFetchActivity } from "@/hooks/useFetchActivity";
@@ -89,7 +89,10 @@ export function CustomStakingPage({
     preflightCommitment: "processed",
   });
 
-  const { data, isLoading, error } = useFetchActivity(publicKey!, pool.tokenSymbol!);
+  const { data, isLoading, error } = useFetchActivity(
+    publicKey!,
+    pool.tokenSymbol!
+  );
   const { program } = useProgram();
   if (!program || !publicKey) {
     return (
@@ -138,6 +141,7 @@ export function CustomStakingPage({
           stakingPoolPda
         );
         setPoolDetails(details);
+        console.log(details.config.minStakeAmount.toNumber());
       } catch (err) {}
     };
 
@@ -249,7 +253,7 @@ export function CustomStakingPage({
 
   const handleStake = async () => {
     if (!stakeAmount) {
-      toast.error("Enter an Amount to stake");
+      toast.info("Enter an Amount to stake");
       return;
     }
 
@@ -304,12 +308,21 @@ export function CustomStakingPage({
 
           mutate(newActivity);
 
-          toast.success("You've successfully deposited tokens!");
+          toast.success("You've sucessfully deposited tokens!", {
+            cancel: {
+              label: "View Transaction",
+              onClick: () =>
+                window.open(
+                  `https://solscan.io/tx/${tx}?cluster=devnet`,
+                  "_blank"
+                ),
+            },
+          });
           return;
         }
       }
     } catch (error) {
-
+      console.log(error);
       setIsStaking(false);
       toast.error("Transaction failed. Please try again.");
     } finally {
@@ -375,13 +388,21 @@ export function CustomStakingPage({
             tokenSymbol: pool.tokenSymbol!,
           };
           mutate(newActivity);
-          toast.success("You've successfully claimed your rewards!");
+          toast.success("Tokens claimed succesfully!", {
+            cancel: {
+              label: "View Transaction",
+              onClick: () =>
+                window.open(
+                  `https://solscan.io/tx/${tx}?cluster=devnet`,
+                  "_blank"
+                ),
+            },
+          });
           return;
         }
       }
       setIsClaiming(false);
     } catch (error) {
-
       setIsClaiming(false);
       toast.error("Error Claiming Rewards");
     } finally {
@@ -440,8 +461,16 @@ export function CustomStakingPage({
           };
 
           mutate(newActivity);
-
-          toast.success("You've successfully claimed your rewards!");
+          toast.success("Tokens unstaked sucessfully!", {
+            cancel: {
+              label: "View Transaction",
+              onClick: () =>
+                window.open(
+                  `https://solscan.io/tx/${tx}?cluster=devnet`,
+                  "_blank"
+                ),
+            },
+          });
           return;
         }
       }
