@@ -94,8 +94,6 @@ export default function PoolAdminPage({
       </div>
     );
   }
-  console.log(pool);
-
   const handleFundPool = async () => {
     if (!program || !publicKey) return;
     if (!fundAmount) {

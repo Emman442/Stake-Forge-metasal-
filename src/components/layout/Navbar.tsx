@@ -14,7 +14,7 @@ export function Navbar() {
 
  const { connected } = useWallet();
  const pathname = usePathname();
-console.log(pathname)
+
  // 👇 list of pages where you don't want the Navbar
 if (pathname.startsWith("/stake")){
   return null

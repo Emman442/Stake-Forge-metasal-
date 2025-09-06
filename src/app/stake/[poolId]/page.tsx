@@ -24,10 +24,7 @@ export default function StakePoolPage({
     async function fetchPools() {
       try {
         const res = await program!.account.stakingPool.all();
-        console.log("Fetched pools:", res);
-
         const pool = res.find((p: any) => p.account.tokenSymbol.toLowerCase() === poolId.toLowerCase());
-        console.log("Matched pool:", pool);
         if (!pool) {
           setPoolNotFound(true);
           return;
@@ -42,7 +39,6 @@ export default function StakePoolPage({
         const url = `https://ipfs.io/ipfs/${cid}`;
         const metaRes = await fetch(url);
         const meta = await metaRes.json();
-        console.log("Fetched pool metadata:", meta);
         setPoolData(meta);
       } catch (err) {
         console.error("Error fetching pool:", err);

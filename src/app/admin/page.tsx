@@ -94,7 +94,6 @@ export default function AdminDashboardPage() {
         .rpc();
 
       setPdaExists(true);
-      console.log("Transaction successful:", tx);
       setIsCreatingGlobalState(false);
       toast.success(`Global State Initialized successfully: ${tx} `);
     } catch (error) {

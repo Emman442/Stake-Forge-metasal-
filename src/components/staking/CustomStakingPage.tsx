@@ -137,7 +137,6 @@ export function CustomStakingPage({
         const details = await program?.account.stakingPool.fetch(
           stakingPoolPda
         );
-        console.log("Fetched pool details:", details);
         setPoolDetails(details);
       } catch (err) {}
     };
@@ -152,7 +151,6 @@ export function CustomStakingPage({
         setUserDetails(details);
       } catch (err) {
         // If account doesn't exist, fallback to default values
-        console.warn("User stake account not found yet, setting defaults.");
         setUserDetails({
           amount: new BN(0),
           pendingRewards: new BN(0),
@@ -311,7 +309,7 @@ export function CustomStakingPage({
         }
       }
     } catch (error) {
-      console.log(error);
+
       setIsStaking(false);
       toast.error("Transaction failed. Please try again.");
     } finally {
@@ -383,7 +381,7 @@ export function CustomStakingPage({
       }
       setIsClaiming(false);
     } catch (error) {
-      console.log("Error: ", error);
+
       setIsClaiming(false);
       toast.error("Error Claiming Rewards");
     } finally {

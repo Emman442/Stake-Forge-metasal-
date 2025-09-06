@@ -116,7 +116,6 @@ export default function PoolBuilder() {
         const mintInfo = await connection.getParsedAccountInfo(mintPubkey);
         // @ts-ignore
         const decimals = mintInfo?.value?.data?.parsed?.info?.decimals;
-        console.log(decimals)
         if (decimals !== undefined) {
           setDecimals(decimals);
         }
@@ -148,8 +147,6 @@ export default function PoolBuilder() {
       }
     })();
   }, [poolConfig.tokenMint]);
-  console.log(decimals);
-  console.log(poolConfig);
 
   const handlePoolAndDeploy = async () => {
     if (!program || !publicKey) return;

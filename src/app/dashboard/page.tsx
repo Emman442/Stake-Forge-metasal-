@@ -114,9 +114,6 @@ export default function DashboardPage() {
     </div>
   ); }
 
-  console.log(myPools)
-
-
   return (
     <div className="container mx-auto px-4 py-16 sm:py-24 space-y-12">
       <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
