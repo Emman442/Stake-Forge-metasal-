@@ -4,7 +4,6 @@ import { CustomStakingPage } from "@/components/staking/CustomStakingPage";
 import { useProgram } from "@/hooks/use-program";
 import { useEffect, useState } from "react";
 import { notFound } from "next/navigation";
-import { PublicKey } from "@solana/web3.js";
 
 export default function StakePoolPage({
   params,
