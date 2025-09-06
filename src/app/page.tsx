@@ -15,7 +15,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-  CheckCircle,
   Code,
   Palette,
   ShieldCheck,
@@ -25,12 +24,8 @@ import {
   MessageSquare,
   Send,
   Mail,
-  DollarSign,
 } from "lucide-react";
 import StatsDashboard from "@/components/common/StatsDashboard";
-import { useProgram } from "@/hooks/use-program";
-import { PublicKey } from "@solana/web3.js";
-import { useEffect, useState } from "react";
 
 const CheckIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -141,7 +136,7 @@ export default function Home() {
         <section className="py-20 sm:py-32">
           <div className="container mx-auto px-4 text-center">
             <h1 className="text-4xl font-bold tracking-tight text-glow sm:text-6xl font-headline">
-              CREATE SOLANA STAKING PROTOCOL FOR FEE
+              CREATE SOLANA STAKING PROTOCOL FOR FREE
             </h1>
             <p className="mt-6 text-lg leading-8 text-muted-foreground max-w-2xl mx-auto">
               With our Staking Builder you will be able to create your Custom
