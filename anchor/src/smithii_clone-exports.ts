@@ -21,7 +21,7 @@ export function getSmithiiCloneId(cluster: Cluster) {
         case 'devnet':
         case 'testnet':
             // This is the program ID for the Counter program on devnet and testnet.
-            return new PublicKey("Dgm572LzwfKzVCuyJR5woxHDy555YrzpNkZxG3W8MXaV")
+            return new PublicKey("4SEaTKWLJ31edvCQaNUinhx4ArjUJWU76Czy5sbGWzKF")
         case 'mainnet-beta':
         default:
             return SMITHII_CLONE_PROGRAM_ID

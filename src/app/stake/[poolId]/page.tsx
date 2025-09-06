@@ -1,56 +1,66 @@
-"use client"
+"use client";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { CustomStakingPage } from "@/components/staking/CustomStakingPage";
 import { useProgram } from "@/hooks/use-program";
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { notFound } from "next/navigation";
+import { PublicKey } from "@solana/web3.js";
 
-  export default function StakePoolPage({ params }: { params: Promise<{ poolId: string }> }) {
-    const { program } = useProgram();
-    const [poolData, setPoolData] = useState<any>(null);
-    const { poolId } = use(params);
+export default function StakePoolPage({
+  params,
+}: {
+  params: { poolId: string };
+}) {
+  const { program } = useProgram();
+  const [poolData, setPoolData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [poolNotFound, setPoolNotFound] = useState(false);
 
-    const [pools, setPools] = useState<any[]>([]);
+  const { poolId } = params;
 
-    useEffect(() => {
-      if (!program) return; 
-      async function fetchPools() {
-        try {
-          const res = await program?.account.stakingPool.all();
-          setPools(res);
-        } catch (err) {
-          console.error("Error fetching pools:", err);
+  useEffect(() => {
+    if (!program) return;
+
+    async function fetchPools() {
+      try {
+        const res = await program!.account.stakingPool.all();
+        console.log("Fetched pools:", res);
+
+        const pool = res.find((p: any) => p.account.tokenSymbol.toLowerCase() === poolId.toLowerCase());
+        console.log("Matched pool:", pool);
+        if (!pool) {
+          setPoolNotFound(true);
+          return;
         }
-      }
 
-      fetchPools();
-    }, [program]);
-
-    const pool = pools[0];
-    // "ipfs://bafkreidhyo4ks5pcvxf6opt2aqpjlwahwnebexyfx45vwjgwgn37qlqgfq"
-
-    const cid = pool?.account?.metadataUri?.replace("ipfs://", "");
-    const url = `https://ipfs.io/ipfs/${cid}`;
-    console.log(cid)
-
-    useEffect(() => {
-      if (!program) return;
-      if (!cid) return;
-      async function fetchPoolData() {
-        try {
-           const res = await fetch(url);
-           const data = await res.json();
-          setPoolData(data);
-        } catch (err) {
-          console.error("Error fetching pools:", err);
+        const cid = pool?.account?.metadataUri?.replace("ipfs://", "");
+        if (!cid) {
+          setPoolNotFound(true);
+          return;
         }
+
+        const url = `https://ipfs.io/ipfs/${cid}`;
+        const metaRes = await fetch(url);
+        const meta = await metaRes.json();
+        console.log("Fetched pool metadata:", meta);
+        setPoolData(meta);
+      } catch (err) {
+        console.error("Error fetching pool:", err);
+        setPoolNotFound(true);
+      } finally {
+        setLoading(false);
       }
+    }
 
-      fetchPoolData();
-    }, [program, cid, pool, url]);
+    fetchPools();
+  }, [program, poolId]);
 
-    return poolData ? (
-      <CustomStakingPage pool={poolData} />
-    ) : (
+  if (poolNotFound && !loading) {
+    notFound();
+  }
+
+  if (loading) {
+    return (
       <div className="flex items-center justify-center min-h-screen w-full">
         <div className="flex flex-col gap-2">
           <LoadingSpinner size="lg" />
@@ -61,3 +71,6 @@ import { use, useEffect, useState } from "react";
       </div>
     );
   }
+
+  return poolData ? <CustomStakingPage pool={poolData} /> : null;
+}

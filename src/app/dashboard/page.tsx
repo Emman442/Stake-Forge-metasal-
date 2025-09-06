@@ -1,19 +1,122 @@
+"use client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, Link as LinkIcon, Users, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-
-const createdPools = [
-  { id: '1', name: 'My Awesome Pool', tvl: 1250345.67, stakers: 432, status: 'Live' },
-  { id: '2', name: 'Community Fund', tvl: 78045.12, stakers: 102, status: 'Live' },
-  { id: '3', name: 'Dev Team Staking', tvl: 0, stakers: 0, status: 'Draft' },
-];
+import { useProgram } from "@/hooks/use-program";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useEffect, useState } from "react";
+import { set } from "date-fns";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 
 export default function DashboardPage() {
+  
+  const { publicKey } = useWallet();
+  const { program } = useProgram();
+  const [myPools, setMyPools] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+ useEffect(() => {
+   const fetchMyPools = async () => {
+     if (!program || !publicKey) return;
+
+     try {
+       setLoading(true);
+       const pools = await program.account.stakingPool.all([
+         {
+           memcmp: {
+             offset: 8,
+             bytes: publicKey.toBase58(),
+           },
+         },
+       ]);
+
+       // Map pools with metadata fetch
+       const poolsWithMeta = await Promise.all(
+         pools.map(async (p) => {
+           const account = p.account;
+           let metadata = null;
+
+           if (account.metadataUri) {
+             try {
+               const cid = account.metadataUri.replace("ipfs://", "");
+               const url = `https://ipfs.io/ipfs/${cid}`;
+               const res = await fetch(url);
+               if (res.ok) {
+                 metadata = await res.json();
+               }
+             } catch (err) {
+               console.error(
+                 `Error fetching metadata for ${account.tokenSymbol}:`,
+                 err
+               );
+             }
+           }
+
+           return {
+             pubkey: p.publicKey,
+             ...account,
+             metadata, // attach metadata here
+           };
+         })
+       );
+
+       setMyPools(poolsWithMeta);
+     } catch (err) {
+       console.error("Error fetching pools:", err);
+     } finally {
+       setLoading(false);
+     }
+   };
+
+   fetchMyPools();
+ }, [program, publicKey]);
+
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen w-full">
+        <div className="flex flex-col gap-2">
+          <LoadingSpinner size="lg" />
+          <p>Loading your pools...</p>
+        </div>
+      </div>
+    );
+  }
+  if(myPools.length === 0) { return (
+    <div className="min-h-screen flex justify-center items-center">
+      <div className="container mx-auto px-4 py-16 sm:py-24 flex flex-col items-center justify-center gap-2">
+        <p>You've not created any pools yet. </p>
+        <Button asChild size="lg" className="button-glow">
+          <Link href="/create">
+            <PlusCircle className="mr-2 h-5 w-5" />
+            Create New Pool
+          </Link>
+        </Button>
+      </div>
+    </div>
+  ); }
+
+  console.log(myPools)
+
+
   return (
     <div className="container mx-auto px-4 py-16 sm:py-24 space-y-12">
       <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
@@ -34,11 +137,13 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <main className="lg:col-span-2 space-y-8">
+        <main className="lg:col-span-3 space-y-8">
           <Card className="bg-secondary/30 backdrop-blur-sm card-glow">
             <CardHeader>
               <CardTitle>My Staking Pools</CardTitle>
-              <CardDescription>A list of all staking pools you have created.</CardDescription>
+              <CardDescription>
+                A list of all staking pools you have created.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -52,17 +157,32 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {createdPools.map((pool) => (
-                    <TableRow key={pool.id}>
-                      <TableCell className="font-medium text-glow">{pool.name}</TableCell>
-                      <TableCell className="font-code">${pool.tvl.toLocaleString()}</TableCell>
-                      <TableCell>{pool.stakers}</TableCell>
+                  {myPools.map((pool) => (
+                    <TableRow key={pool.stakeTokenMint}>
+                      <TableCell className="font-medium text-glow">
+                        {pool.metadata.name}
+                      </TableCell>
+                      <TableCell className="font-code">
+                        {Number(pool.totalStaked)/(10**pool.decimals)}
+                      </TableCell>
+                      <TableCell>{Number(pool.totalStakers)}</TableCell>
                       <TableCell>
-                        <Badge variant={pool.status === 'Live' ? 'default' : 'secondary'} className={pool.status === 'Live' ? 'bg-accent text-accent-foreground' : ''}>{pool.status}</Badge>
+                        <Badge
+                          variant={
+                            pool.isActive? "default" : "secondary"
+                          }
+                          className={
+                            pool.isActive
+                              ? "bg-accent text-accent-foreground"
+                              : ""
+                          }
+                        >
+                          {pool.isActive? "Live": "ended"}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button asChild variant="ghost" size="sm">
-                          <Link href={`/stake/${pool.id}`}>View</Link>
+                          <Link href={`/admin/${pool.tokenSymbol}`}>Manage</Link>
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -72,36 +192,8 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </main>
-        <aside className="space-y-8">
-           <Card className="bg-secondary/30 backdrop-blur-sm card-glow">
-            <CardHeader>
-              <CardTitle>Referral Program</CardTitle>
-              <CardDescription>Earn fees from pools created with your referral link.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-muted-foreground">Total Earnings</span>
-                  <span className="text-2xl font-bold font-code text-glow flex items-center"><DollarSign className="h-5 w-5 mr-1" />1,234.56</span>
-                </div>
-                <div className="flex justify-between items-baseline">
-                  <span className="text-muted-foreground">Referred Users</span>
-                  <span className="text-2xl font-bold font-code text-glow flex items-center"><Users className="h-5 w-5 mr-1" />23</span>
-                </div>
-              </div>
-              <div className="space-y-2 pt-4">
-                <Label htmlFor="referral-link">Your Referral Link</Label>
-                <div className="flex items-center gap-2">
-                  <Input id="referral-link" value="stakingforge.io/r/your-code" readOnly />
-                  <Button variant="outline" size="icon">
-                    <LinkIcon className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </aside>
       </div>
     </div>
   );
-}
+} 
+

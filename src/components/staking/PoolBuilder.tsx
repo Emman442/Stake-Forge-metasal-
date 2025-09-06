@@ -1,6 +1,5 @@
 "use client";
-
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,7 +39,6 @@ const TABS = ["token", "rewards", "settings", "customization"];
 export interface PoolConfigInterface {
   tokenMint: string;
   useDifferentRewardToken: boolean;
-  lockPeriod: string;
   penalty: string;
   poolName: string;
   poolDescription: string;
@@ -63,6 +60,9 @@ export default function PoolBuilder() {
   const [currentTab, setCurrentTab] = useState(TABS[0]);
   const { program } = useProgram();
   const { publicKey } = useWallet();
+  const [decimals, setDecimals] = useState<number | null>(null);
+  const [isCreatingPool, setIsCreatingPool] = useState(false);
+  // const [tokenSymbol, setTokenSymbol] = useState<string>("");
 
   const connection = new Connection(clusterApiUrl("devnet"), {
     commitment: "confirmed",
@@ -73,7 +73,9 @@ export default function PoolBuilder() {
     if (poolConfig.rewardRate <= 0) return 0;
     const tokensStaked = 100;
     const secondsIn30Days = 30 * 24 * 60 * 60;
-    const totalReward = poolConfig.rewardRate * tokensStaked * secondsIn30Days;
+    const totalReward =
+      (((poolConfig.rewardRate * tokensStaked) / 10 ** decimals!) *
+      secondsIn30Days)/10**4;
     return totalReward.toLocaleString(undefined, { maximumFractionDigits: 2 });
   };
 
@@ -88,7 +90,6 @@ export default function PoolBuilder() {
   const [poolConfig, setPoolConfig] = useState<PoolConfigInterface>({
     tokenMint: "",
     useDifferentRewardToken: false,
-    lockPeriod: "",
     penalty: "",
     poolName: "",
     poolDescription: "",
@@ -102,12 +103,67 @@ export default function PoolBuilder() {
     headerColor: "",
     buttonsColor: "",
     backgroundColor: "",
-    tokenSymbol: "USDC",
+    tokenSymbol: "",
     rewardRate: 0,
   });
 
+  useEffect(() => {
+    if (poolConfig.tokenMint.length !== 44) return;
+
+    (async () => {
+      try {
+        const mintPubkey = new PublicKey(poolConfig.tokenMint);
+        const mintInfo = await connection.getParsedAccountInfo(mintPubkey);
+        // @ts-ignore
+        const decimals = mintInfo?.value?.data?.parsed?.info?.decimals;
+        console.log(decimals)
+        if (decimals !== undefined) {
+          setDecimals(decimals);
+        }
+
+        // Fetch token metadata from Jupiter
+        const res = await fetch(
+          `https://lite-api.jup.ag/tokens/v2/search?query=${poolConfig.tokenMint}`
+        );
+        const data = await res.json();
+
+        if (data && data.length > 0) {
+          const token = data[0];
+          setPoolConfig((prev) => ({
+            ...prev,
+            tokenSymbol: token.symbol || "UNKNOWN",
+          }));
+        } else {
+          setPoolConfig((prev) => ({
+            ...prev,
+            tokenSymbol: "USDC",
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching token data:", error);
+        setPoolConfig((prev) => ({
+          ...prev,
+          tokenSymbol: "USDC",
+        }));
+      }
+    })();
+  }, [poolConfig.tokenMint]);
+  console.log(decimals);
+  console.log(poolConfig);
+
   const handlePoolAndDeploy = async () => {
     if (!program || !publicKey) return;
+
+   const allPools = await program.account.stakingPool.all();
+
+   const filteredPools = allPools.filter(
+     (pool) => pool.account.tokenSymbol.toLowerCase() === poolConfig.tokenSymbol.toLowerCase()
+   );
+
+   if(filteredPools.length > 0){
+    toast.error("A pool with this token symbol already exists. try creating a pool with a different token.");
+    return;
+   }
 
     if (
       !poolConfig.tokenMint ||
@@ -118,6 +174,7 @@ export default function PoolBuilder() {
       alert("Please fill in all required fields.");
       return;
     }
+    setIsCreatingPool(true);
 
     const [stakingPoolPda, stakingPdaBump] = PublicKey.findProgramAddressSync(
       [
@@ -153,8 +210,6 @@ export default function PoolBuilder() {
         name: poolConfig.poolName,
         description: poolConfig.poolDescription,
         tokenMint: poolConfig.tokenMint,
-      
-        lockPeriod: poolConfig.lockPeriod,
         penalty: poolConfig.penalty,
         maxSize: poolConfig.maxSize,
         minStake: poolConfig.minStake,
@@ -182,18 +237,18 @@ export default function PoolBuilder() {
 
       const program_config = {
         rewardRatePerTokenPerSecond: new anchor.BN(poolConfig.rewardRate), // e.g., 0.001 tokens/sec
-        minStakeAmount: new anchor.BN(poolConfig.minStake),
-        maxStakePerUser: new anchor.BN(poolConfig.maxStakeUser),
+        minStakeAmount: new anchor.BN(Number(poolConfig.minStake)* 10**decimals!),
+        maxStakePerUser: new anchor.BN(Number(poolConfig.maxStakeUser)* 10**decimals!),
         minStakeDuration: new anchor.BN(60),
         earlyWithdrawalPenaltyBps: new anchor.BN(poolConfig.penalty),
-        maxPoolSize: null,
+        maxPoolSize: new anchor.BN(Number(poolConfig.maxSize)* 10**decimals!),
         lockPeriod: null,
         poolName: poolConfig.poolName,
         poolDescription: poolConfig.poolDescription,
       };
 
       const tx = await program?.methods
-        .createStakingPool(program_config, metadataUri)
+        .createStakingPool(program_config, metadataUri, poolConfig.tokenSymbol)
         .accounts({
           stakeTokenMint: new PublicKey(poolConfig.tokenMint),
           //@ts-ignore
@@ -225,12 +280,15 @@ export default function PoolBuilder() {
         const encoded = eventLog.replace("Program data: ", "");
         const decoded = program.coder.events.decode(encoded);
         if (decoded?.name === "poolCreated") {
+          setIsCreatingPool(false);
           toast.success("You've successfully created a staking vault.");
           return;
         }
       }
       return metadataUri;
+      setIsCreatingPool(false);
     } catch (error) {
+      setIsCreatingPool(false);
       console.error("Error deploying pool:", error);
       toast.error("Something went wrong while creating the pool.");
     }
@@ -251,8 +309,8 @@ export default function PoolBuilder() {
   };
   if (!publicKey || !program) {
     return (
-      <div className="min-h-screen `justify-center flex items-center ">
-        <div className="flex flex-col gap-2 justify-center items-center">
+      <div className="min-h-screen justify-center flex items-center ">
+        <div className="flex flex-col gap-2 ">
           <p>Please Connect your wallet to continue!</p>
           <WalletMultiButton />
         </div>
@@ -359,7 +417,7 @@ export default function PoolBuilder() {
                 id="reward-rate"
                 type="number"
                 placeholder="e.g., 0.00001"
-                value={poolConfig.rewardRate || ""}
+                value={poolConfig.rewardRate || 0}
                 onChange={(e) =>
                   setPoolConfig({
                     ...poolConfig,
@@ -377,50 +435,8 @@ export default function PoolBuilder() {
                 </span>
               </div>
             </div>
-            {/* <div className="space-y-2">
-              <Label htmlFor="reward-method">Reward Calculation</Label>
-              <Select
-                value={poolConfig.rewardMethod}
-                onValueChange={(value) =>
-                  setPoolConfig({ ...poolConfig, rewardMethod: value })
-                }
-              >
-                <SelectTrigger id="reward-method">
-                  <SelectValue placeholder="Select method" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fixed">Fixed APY</SelectItem>
-                  <SelectItem value="time-based">
-                    Time-based multipliers
-                  </SelectItem>
-                  <SelectItem value="pool-based">
-                    Pool-based distribution
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div> */}
-            <div className="space-y-2">
-              <Label htmlFor="lock-period">Lock Period</Label>
-              <Select
-                value={poolConfig.lockPeriod}
-                onValueChange={(value) =>
-                  setPoolConfig({ ...poolConfig, lockPeriod: value })
-                }
-              >
-                <SelectTrigger id="lock-period">
-                  <SelectValue placeholder="Select lock period" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="flexible">Flexible</SelectItem>
-                  <SelectItem value="30d">30 Days</SelectItem>
-                  <SelectItem value="60d">60 Days</SelectItem>
-                  <SelectItem value="90d">90 Days</SelectItem>
-                  <SelectItem value="180d">180 Days</SelectItem>
-                  <SelectItem value="365d">365 Days</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
+
+            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="penalty">Early Withdrawal Penalty</Label>
               <Input
                 id="penalty"
@@ -641,9 +657,10 @@ export default function PoolBuilder() {
               <Button
                 size="lg"
                 className="button-glow"
+                disabled={isCreatingPool}
                 onClick={handlePoolAndDeploy}
               >
-                Create Pool & Deploy
+                {isCreatingPool? "Creating..." : "Create Pool & Deploy"}
               </Button>
             )}
           </div>

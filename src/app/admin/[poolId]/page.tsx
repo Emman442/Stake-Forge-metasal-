@@ -1,3 +1,4 @@
+"use client";
 import {
   Card,
   CardContent,
@@ -9,40 +10,260 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-
-// Mock data for a specific staking pool
-const poolConfig = {
-  pool_name: "My Awesome Pool",
-  pool_description: "Staking my awesome token for even more awesome rewards.",
-  reward_rate_per_token_per_second: 10000000, // 0.01 tokens per second
-  min_stake_amount: 100,
-  max_stake_per_user: 10000,
-  min_stake_duration: 604800, // 7 days in seconds
-  early_withdrawal_penalty_bps: 500, // 5%
-  max_pool_size: 1000000,
-  lock_period: 2592000, // 30 days in seconds
-};
+import { use, useEffect, useMemo, useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useProgram } from "@/hooks/use-program";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { BN } from "@coral-xyz/anchor";
+import * as anchor from "@coral-xyz/anchor";
+import toast from "react-hot-toast";
+import { clusterApiUrl, Connection, PublicKey } from "@solana/web3.js";
+import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 
 export default function PoolAdminPage({
   params,
 }: {
-  params: { poolId: string };
+  params: Promise<{ poolId: string }>;
 }) {
+  const { program, provider } = useProgram();
+  const { publicKey } = useWallet();
+
+  const resolvedParams = use(params);
+  const { poolId } = resolvedParams;
+
+  const [fundAmount, setFundAmount] = useState<number>();
+  const [pool, setPool] = useState<any>(null);
+  const [isFunding, setIsFunding] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const connection = new Connection(clusterApiUrl("devnet"), {
+    commitment: "confirmed",
+  });
+
+  useEffect(() => {
+    const fetchPool = async () => {
+      if (!program) return;
+      try {
+        setLoading(true);
+
+        const rawPools = await program.account.stakingPool.all();
+
+        const match = rawPools.find((p) => p.account.tokenSymbol === poolId);
+
+        if (!match) {
+          console.warn(`No pool found for ${poolId}`);
+          setPool(null);
+          return;
+        }
+
+        let metadata = null;
+        if (match.account.metadataUri) {
+          try {
+            const cid = match.account.metadataUri.replace("ipfs://", "");
+            const url = `https://ipfs.io/ipfs/${cid}`;
+            const res = await fetch(url);
+            if (res.ok) {
+              metadata = await res.json();
+            }
+          } catch (err) {
+            console.error("Error fetching metadata:", err);
+          }
+        }
+
+        setPool({
+          pubkey: match.publicKey.toBase58(),
+          ...match.account,
+          metadata,
+        });
+      } catch (err) {
+        console.error("Error fetching pool:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPool();
+  }, [program, publicKey, poolId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen w-full">
+        <div className="flex flex-col gap-2">
+          <LoadingSpinner size="lg" />
+          <p>Loading pool...</p>
+        </div>
+      </div>
+    );
+  }
+  console.log(pool);
+
+  const handleFundPool = async () => {
+    if (!program || !publicKey) return;
+    if (!fundAmount) {
+      toast.error("Fund Amount is Empty!");
+      return;
+    }
+
+    try {
+      const [stakingPoolPda, stakingPoolbump] = useMemo(() => {
+        return PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("staking_pool"),
+            new PublicKey(pool.creator).toBuffer(),
+            new PublicKey(pool.tokenMint).toBuffer(),
+          ],
+          program!.programId
+        );
+      }, [pool.creator, pool.tokenMint, program?.programId]);
+
+      const getStakeAccount = async () => {
+        if (!provider?.wallet?.publicKey)
+          throw new Error("Wallet not connected");
+
+        return await getOrCreateAssociatedTokenAccount(
+          connection,
+          provider.wallet.payer!,
+          new PublicKey(pool.tokenMint),
+          provider.wallet.publicKey
+        );
+      };
+
+      const [globalStatePda, _] = PublicKey.findProgramAddressSync(
+        [Buffer.from("global_state")],
+        program!.programId
+      );
+
+      const [rewardVaultPda, rewardVaultPdaBump] =
+        PublicKey.findProgramAddressSync(
+          [Buffer.from("reward_vault"), stakingPoolPda.toBuffer()],
+          program.programId
+        );
+
+      const stakeAcct = await getStakeAccount();
+
+      const tx = await program.methods
+        .fundRewardPool(new BN(fundAmount * 10 ** pool.decimals))
+        .accounts({
+          funder: publicKey,
+          stakingPool: stakingPoolPda,
+          //@ts-ignore
+          globalState: globalStatePda,
+          funderRewardAccount: stakeAcct.address,
+          rewardVault: rewardVaultPda,
+          tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+        })
+        .rpc();
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      const txDetails = await connection.getTransaction(tx, {
+        commitment: "confirmed",
+        maxSupportedTransactionVersion: 0,
+      });
+
+      if (!txDetails) {
+        throw new Error("Transaction not found or not confirmed");
+      }
+
+      const logs = txDetails?.meta?.logMessages;
+      const eventLog = logs?.find((l) => l.startsWith("Program data:"));
+
+      if (eventLog) {
+        const encoded = eventLog.replace("Program data: ", "");
+        const decoded = program.coder.events.decode(encoded);
+        if (decoded?.name === "poolFunded") {
+          toast.success("You've successfully Funded the Pool!");
+          return;
+        }
+      }
+    } catch (error) {
+      setIsFunding(false);
+      toast.error("Error Funding Campaign");
+    } finally {
+      setIsFunding(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-16 sm:py-24">
       <section className="text-center">
         <h1 className="text-4xl font-bold tracking-tight text-glow sm:text-5xl font-headline">
           Pool Admin:{" "}
-          <span className="text-primary">{poolConfig.pool_name}</span>
+          <span className="text-primary">{pool.metadata.name}</span>
         </h1>
         <p className="mt-4 text-lg leading-8 text-muted-foreground max-w-3xl mx-auto">
-          Manage the settings for this specific staking pool. Pool ID:{" "}
-          {params.poolId}
+          Manage the settings and funds for your staking pool. Pool ID:{" "}
+          {poolId}
         </p>
       </section>
 
-      <section className="mt-12 max-w-2xl mx-auto">
-        <Card className="bg-secondary/30 backdrop-blur-sm card-glow">
+      <section className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        <div className="space-y-8">
+          <Card className="bg-secondary/30 backdrop-blur-sm card-glow">
+            <CardHeader>
+              <CardTitle>Fund Pool</CardTitle>
+              <CardDescription>
+                Add reward tokens to the pool to be distributed to stakers.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="fund-amount">Amount</Label>
+                <div className="relative">
+                  <Input
+                    id="fund-amount"
+                    type="number"
+                    placeholder={`e.g., 10000 ${poolId}`}
+                    className="pl-8"
+                    value={fundAmount}
+                    onChange={(e) => setFundAmount(Number(e.target.value))}
+                  />
+                 
+                </div>
+              </div>
+              <Button
+                onClick={handleFundPool}
+                disabled={isFunding}
+                className="w-full button-glow"
+              >
+                {isFunding ? "Funding..." : "Fund Pool"}
+              </Button>
+            </CardContent>
+          </Card>
+          {/* <Card className="bg-secondary/30 backdrop-blur-sm card-glow">
+            <CardHeader>
+              <CardTitle>Withdraw Funds</CardTitle>
+              <CardDescription>
+                Withdraw reward tokens from the pool.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-baseline p-4 rounded-lg bg-background/50">
+                <span className="text-muted-foreground">Available Balance</span>
+                <span className="text-2xl font-bold font-code text-glow">
+                  {poolConfig.pool_balance.toLocaleString()}{" "}
+                  {poolId}
+                </span>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="withdraw-amount">Amount</Label>
+                <div className="relative">
+                  <Input
+                    id="withdraw-amount"
+                    type="number"
+                    placeholder="e.g., 5000"
+                    className="pl-8"
+                  />
+                  <span className="absolute left-2.5 top-2.5 text-muted-foreground">
+                    {poolConfig.token_symbol}
+                  </span>
+                </div>
+              </div>
+              <Button variant="outline" className="w-full">
+                Withdraw Funds
+              </Button>
+            </CardContent>
+          </Card> */}
+        </div>
+        <Card className="bg-secondary/30 backdrop-blur-sm card-glow lg:col-span-1">
           <CardHeader>
             <CardTitle>Staking Pool Configuration</CardTitle>
             <CardDescription>
@@ -53,102 +274,45 @@ export default function PoolAdminPage({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="pool-name">Pool Name</Label>
-                <Input id="pool-name" defaultValue={poolConfig.pool_name} />
+                <Input id="pool-name" defaultValue={pool.metadata.name} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="pool-desc">Pool Description</Label>
-                <Input
-                  id="pool-desc"
-                  defaultValue={poolConfig.pool_description}
-                />
-              </div>
-              <div className="space-y-2">
+              {/* <div className="space-y-2 col-span-2">
                 <Label htmlFor="reward-rate">Reward Rate (per token/sec)</Label>
                 <Input
                   id="reward-rate"
                   type="number"
                   defaultValue={poolConfig.reward_rate_per_token_per_second}
                 />
-              </div>
+              </div> */}
               <div className="space-y-2">
                 <Label htmlFor="min-stake">Min Stake Amount</Label>
                 <Input
                   id="min-stake"
                   type="number"
-                  defaultValue={poolConfig.min_stake_amount}
+                  defaultValue={
+                    pool.config.minStakeAmount / 10 ** pool.decimals
+                  }
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="min-duration">
-                  Min Stake Duration (seconds)
-                </Label>
-                <Input
-                  id="min-duration"
-                  type="number"
-                  defaultValue={poolConfig.min_stake_duration}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="penalty">Early Withdrawal Penalty (BPS)</Label>
-                <Input
-                  id="penalty"
-                  type="number"
-                  defaultValue={poolConfig.early_withdrawal_penalty_bps}
-                />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="max-stake-enabled"
-                  defaultChecked={!!poolConfig.max_stake_per_user}
-                />
-                <Label htmlFor="max-stake-enabled">
-                  Set Max Stake Per User
-                </Label>
-              </div>
-              <Input
-                id="max-stake"
-                type="number"
-                defaultValue={poolConfig.max_stake_per_user}
-                placeholder="e.g. 10000"
-              />
             </div>
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="max-pool-enabled"
-                  defaultChecked={!!poolConfig.max_pool_size}
+                  defaultChecked={!!pool.max_pool_size}
                 />
                 <Label htmlFor="max-pool-enabled">Set Max Pool Size</Label>
               </div>
               <Input
                 id="max-pool"
                 type="number"
-                defaultValue={poolConfig.max_pool_size}
+                defaultValue={pool.config.maxStakePerUser / 10 ** pool.decimals}
                 placeholder="e.g. 1000000"
               />
             </div>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="lock-period-enabled"
-                  defaultChecked={!!poolConfig.lock_period}
-                />
-                <Label htmlFor="lock-period-enabled">
-                  Set Lock Period (seconds)
-                </Label>
-              </div>
-              <Input
-                id="lock-period"
-                type="number"
-                defaultValue={poolConfig.lock_period}
-                placeholder="e.g. 2592000 for 30 days"
-              />
-            </div>
-            <div className="flex justify-end">
+            {/* <div className="flex justify-end pt-4">
               <Button className="button-glow">Update Pool</Button>
-            </div>
+            </div> */}
           </CardContent>
         </Card>
       </section>

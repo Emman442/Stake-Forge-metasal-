@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { HeartCrack } from 'lucide-react';
 
-function NotFound() {
+export default function NotFound() {
   return (
     <div className="container mx-auto flex h-[calc(100vh-10rem)] items-center justify-center px-4 py-16 sm:py-24">
       <div className="flex flex-col items-center text-center">
@@ -11,7 +11,7 @@ function NotFound() {
           404 - Page Not Found
         </h1>
         <p className="mt-4 text-lg leading-8 text-muted-foreground max-w-md mx-auto">
-          Oops! It looks like the page you were searching for has wandered off.
+          Oops! We Couldn't find the pool you're searching for
         </p>
         <div className="mt-10">
           <Button asChild size="lg" className="button-glow">
@@ -24,5 +24,3 @@ function NotFound() {
     </div>
   );
 }
-
-export default NotFound;

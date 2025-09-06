@@ -1,5 +1,5 @@
 {
-    "address": "Dgm572LzwfKzVCuyJR5woxHDy555YrzpNkZxG3W8MXaV",
+    "address": "4SEaTKWLJ31edvCQaNUinhx4ArjUJWU76Czy5sbGWzKF",
     "metadata": {
         "name": "smithii_clone",
         "version": "0.1.0",
@@ -287,6 +287,10 @@
                 },
                 {
                     "name": "metadata_uri",
+                    "type": "string"
+                },
+                {
+                    "name": "token_symbol",
                     "type": "string"
                 }
             ]
@@ -1051,6 +1055,10 @@
                     },
                     {
                         "name": "metadata_uri",
+                        "type": "string"
+                    },
+                    {
+                        "name": "token_symbol",
                         "type": "string"
                     }
                 ]

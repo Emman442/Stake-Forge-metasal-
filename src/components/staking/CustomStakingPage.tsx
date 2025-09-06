@@ -36,8 +36,9 @@ import toast from "react-hot-toast";
 import { FaDiscord, FaStackExchange, FaXTwitter } from "react-icons/fa6";
 import { LoadingSpinner } from "../common/LoadingSpinner";
 import { useFetchActivity } from "@/hooks/useFetchActivity";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Wallet } from "lucide-react";
 import { truncateHash } from "@/helpers/truncateHash";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 export interface PoolConfigInterfaceMetadata {
   creator: string;
@@ -67,7 +68,7 @@ export function CustomStakingPage({
 }: {
   pool: PoolConfigInterfaceMetadata;
 }) {
-  const { publicKey } = useWallet();
+  const { publicKey, connected } = useWallet();
   const [tokenBalace, setTokenBalance] = useState<number>(0);
   const [poolDetails, setPoolDetails] = useState<any>();
   const [isStaking, setIsStaking] = useState(false);
@@ -88,7 +89,7 @@ export function CustomStakingPage({
     preflightCommitment: "processed",
   });
 
-  const { data, isLoading, error } = useFetchActivity(publicKey!);
+  const { data, isLoading, error } = useFetchActivity(publicKey!, pool.tokenSymbol!);
   const { program } = useProgram();
   if (!program || !publicKey) {
     return (
@@ -97,11 +98,8 @@ export function CustomStakingPage({
       </div>
     );
   }
-  console.log(data)
 
-  const src = ipfsToHttp(
-    "ipfs://bafkreic74ql7l75uoudr3rrtbzdftacf2r6rqscxhywpcidxwabrjxtuve"
-  );
+  const src = ipfsToHttp(pool.image!);
 
   const [stakingPoolPda, stakingPoolbump] = useMemo(() => {
     return PublicKey.findProgramAddressSync(
@@ -139,6 +137,7 @@ export function CustomStakingPage({
         const details = await program?.account.stakingPool.fetch(
           stakingPoolPda
         );
+        console.log("Fetched pool details:", details);
         setPoolDetails(details);
       } catch (err) {}
     };
@@ -152,12 +151,21 @@ export function CustomStakingPage({
         const details = await program?.account.userStake.fetch(userStakePda);
         setUserDetails(details);
       } catch (err) {
-        console.error("Error fetching pool details:", err);
+        // If account doesn't exist, fallback to default values
+        console.warn("User stake account not found yet, setting defaults.");
+        setUserDetails({
+          amount: new BN(0),
+          pendingRewards: new BN(0),
+          lastUpdateTime: new BN(Math.floor(Date.now() / 1000)),
+          lockupDuration: new BN(0),
+          startTime: new BN(0),
+        });
       }
     };
 
     fetchUserStakeDetails();
   }, [stakingPoolPda]);
+
   useEffect(() => {
     const fetchTokenBal = async () => {
       if (!publicKey || !pool?.tokenMint) return;
@@ -293,6 +301,7 @@ export function CustomStakingPage({
             lock_time: no_of_days.toString(),
             timestamp: startTimeSec,
             transaction: tx,
+            tokenSymbol: pool.tokenSymbol!,
           };
 
           mutate(newActivity);
@@ -302,7 +311,7 @@ export function CustomStakingPage({
         }
       }
     } catch (error) {
-      console.log(error)
+      console.log(error);
       setIsStaking(false);
       toast.error("Transaction failed. Please try again.");
     } finally {
@@ -311,8 +320,7 @@ export function CustomStakingPage({
   };
   const handleClaim = async () => {
     if (!program || !publicKey) return;
-    const global_statee = await program.account.globalState.fetch(globalStatePda)
-    console.log("global State: ", global_statee.platformFeeVault.toString());
+
     try {
       setIsClaiming(true);
       const stakeAccount = await getStakeAccount();
@@ -322,7 +330,7 @@ export function CustomStakingPage({
           [Buffer.from("reward_vault"), stakingPoolPda.toBuffer()],
           program.programId
         );
-        console.log(rewardVaultPda.toString());
+
       const tx = await program.methods
         .claimRewards()
         .accounts({
@@ -366,6 +374,7 @@ export function CustomStakingPage({
             // lockTime: null,
             timestamp: Math.floor(Date.now() / 1000),
             transaction: tx,
+            tokenSymbol: pool.tokenSymbol!,
           };
           mutate(newActivity);
           toast.success("You've successfully claimed your rewards!");
@@ -383,8 +392,8 @@ export function CustomStakingPage({
   };
   const handleUnstake = async () => {
     if (!program || !publicKey) return;
-    if(!unstakeAmount){
-      toast.error("Enter amount to unstake")
+    if (!unstakeAmount) {
+      toast.error("Enter amount to unstake");
     }
     const stakeAccount = await getStakeAccount();
     try {
@@ -429,6 +438,7 @@ export function CustomStakingPage({
             // lockTime: null,
             timestamp: Math.floor(Date.now() / 1000),
             transaction: tx,
+            tokenSymbol: pool.tokenSymbol!,
           };
 
           mutate(newActivity);
@@ -457,7 +467,7 @@ export function CustomStakingPage({
     );
   }
 
-  if (!userDetails || !poolDetails) {
+  if (!poolDetails) {
     return (
       <div className="flex items-center justify-center min-h-screen text-gray-400">
         Loading user or pool details...
@@ -467,16 +477,49 @@ export function CustomStakingPage({
 
   return (
     <div className="min-h-screen text-white font-body">
-      <header className="relative w-full h-48 md:h-64">
-        <Image
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-20 items-center mx-auto">
+          <div className="mr-4 flex items-center">
+            <div className="mr-6 flex items-center space-x-2">
+              <img src={src} alt="" className="w-10 h-10 rounded-full" />
+              <span className="font-bold font-headline text-foreground">
+                {pool.tokenSymbol}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-1 items-center justify-end space-x-4">
+            <div className="flex gap-2 items-center">
+              <div className="relative">
+                <WalletMultiButton
+                  style={{
+                    background: "transparent",
+                    height: "40px",
+                    padding: "0 16px 0 40px",
+                    fontSize: "14px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    color: "#00E6B8",
+                    border: "1px solid #00E6B8",
+                  }}
+                />
+                {connected ? (
+                  <span className="left-0 absolute"></span>
+                ) : (
+                  <Wallet className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#00E6B8] pointer-events-none" />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div className="relative w-full h-48 md:h-64 overflow-hidden rounded-xl flex items-center justify-center">
+        <img
           src={src}
           alt={`${pool.name} header`}
-          fill
-          className="object-cover"
-          data-ai-hint="header image"
+          className="object-contain opacity-10 scale-150 rounded-full w-42"
         />
-        <div className="absolute inset-0 bg-black/50" />
-      </header>
+        <div className="absolute inset-0 bg-gradient-to-b from-background/80 to-background/40" />
+      </div>
 
       <main className="container mx-auto px-4 py-8 -mt-24 relative z-10">
         <div className="flex justify-end items-center gap-4 mb-4">
@@ -486,7 +529,7 @@ export function CustomStakingPage({
               target="_blank"
               className="text-gray-300 hover:text-white"
             >
-              <FaXTwitter />
+              <FaXTwitter size={30} />
             </Link>
           )}
           {pool.links.discord && (
@@ -533,7 +576,7 @@ export function CustomStakingPage({
               <div>
                 {calculateDailyReward(
                   userDetails?.amount.toNumber() / 10 ** poolDetails?.decimals
-                ).toFixed(5)}{" "}
+                ).toFixed(5) || 0}{" "}
                 {pool.tokenSymbol}/day
               </div>
             </div>
@@ -650,7 +693,7 @@ export function CustomStakingPage({
               </div>
               <Button
                 size="lg"
-                className="w-full bg-gray-700 hover:bg-gray-600"
+                className="w-full bg-gray-400 hover:bg-gray-600"
                 disabled={!canClaim}
                 onClick={handleClaim}
               >
@@ -720,7 +763,7 @@ export function CustomStakingPage({
               </div>
               <Button
                 size="lg"
-                className="w-full bg-gray-700 hover:bg-gray-600"
+                className="w-full bg-gray-400 hover:bg-gray-600"
                 disabled={unstakeAmount <= 0}
                 onClick={handleUnstake}
               >
@@ -769,9 +812,7 @@ export function CustomStakingPage({
                         <TableCell className="pl-2">
                           {activity.action === "stake" ? (
                             <>
-                              {`${
-                                activity.lock_time
-                              } days - ${formatDate(
+                              {`${activity.lock_time} days - ${formatDate(
                                 new Date(activity.timestamp * 1000)
                               )}`}
                             </>
