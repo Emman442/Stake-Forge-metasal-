@@ -689,6 +689,7 @@ export function CustomStakingPage({
               <Button
                 size="lg"
                 onClick={handleStake}
+                disabled={isStaking}
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg"
               >
                 {isStaking ? "Staking..." : "Stake"}

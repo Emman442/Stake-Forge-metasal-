@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/smithii_clone.json`.
  */
 export type SmithiiClone = {
-    "address": "4SEaTKWLJ31edvCQaNUinhx4ArjUJWU76Czy5sbGWzKF",
+    "address": "3HY3jdzJgQQwehWPNNu25ewRJogd4P2c3b38UPPSvSA1",
     "metadata": {
         "name": "smithiiClone",
         "version": "0.1.0",
@@ -1101,12 +1101,6 @@ export type SmithiiClone = {
                         "name": "maxPoolSize",
                         "type": {
                             "option": "u64"
-                        }
-                    },
-                    {
-                        "name": "lockPeriod",
-                        "type": {
-                            "option": "i64"
                         }
                     },
                     {
