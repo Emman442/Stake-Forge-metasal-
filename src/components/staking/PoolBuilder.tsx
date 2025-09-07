@@ -10,13 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,7 +46,7 @@ export interface PoolConfigInterface {
   buttonsColor: string;
   backgroundColor: string;
   tokenSymbol: string;
-  rewardRate?: number;
+  rewardRate?: string;
 }
 
 export default function PoolBuilder() {
@@ -67,18 +60,17 @@ export default function PoolBuilder() {
   const connection = new Connection(clusterApiUrl("devnet"), {
     commitment: "confirmed",
   });
-
-  const calculateExampleReward = () => {
-    if (!poolConfig.rewardRate) return;
-    if (poolConfig.rewardRate <= 0) return 0;
-    const tokensStaked = 100;
-    const secondsIn30Days = 30 * 24 * 60 * 60;
-    const totalReward =
-      (((poolConfig.rewardRate * tokensStaked) / 10 ** decimals!) *
-        secondsIn30Days) /
-      10 ** 4;
-    return totalReward.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  };
+ const calculateExampleReward = () => {
+   if (!poolConfig.rewardRate) return;
+   if (Number(poolConfig.rewardRate) <= 0) return 0;
+   const tokensStaked = 100;
+   const secondsIn30Days = 30 * 24 * 60 * 60;
+   const totalReward =
+     (((Number(poolConfig.rewardRate) * tokensStaked) / 10 ** decimals!) *
+       secondsIn30Days) /
+     10 ** 4;
+   return totalReward.toLocaleString(undefined, { maximumFractionDigits: 2 });
+ };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -105,7 +97,7 @@ export default function PoolBuilder() {
     buttonsColor: "",
     backgroundColor: "",
     tokenSymbol: "",
-    rewardRate: 0,
+    rewardRate: "",
   });
 
   useEffect(() => {
@@ -159,6 +151,7 @@ export default function PoolBuilder() {
         pool.account.tokenSymbol.toLowerCase() ===
         poolConfig.tokenSymbol.toLowerCase()
     );
+        setIsCreatingPool(true);
 
     if (filteredPools.length > 0) {
       toast.error(
@@ -176,7 +169,6 @@ export default function PoolBuilder() {
       toast.info("Please fill in all required fields.");
       return;
     }
-    setIsCreatingPool(true);
 
     const [stakingPoolPda, stakingPdaBump] = PublicKey.findProgramAddressSync(
       [
@@ -238,7 +230,7 @@ export default function PoolBuilder() {
       const metadataUri = `ipfs://${uploadMetadata.cid}`;
 
       const program_config = {
-        rewardRatePerTokenPerSecond: new anchor.BN(poolConfig.rewardRate), // e.g., 0.001 tokens/sec
+        rewardRatePerTokenPerSecond: new anchor.BN(Number(poolConfig.rewardRate)), // e.g., 0.001 tokens/sec
         minStakeAmount: new anchor.BN(
           Number(poolConfig.minStake) * 10 ** decimals!
         ),
@@ -433,15 +425,14 @@ export default function PoolBuilder() {
               <Input
                 id="reward-rate"
                 type="number"
-                placeholder="e.g., 0.00001"
-                value={poolConfig.rewardRate || 0}
+                placeholder="e.g., 100"
+                value={poolConfig.rewardRate}
                 onChange={(e) =>
                   setPoolConfig({
                     ...poolConfig,
-                    rewardRate: Number(e.target.value),
+                    rewardRate: e.target.value,
                   })
                 }
-                step="0.0000001"
               />
               <div className="text-xs text-muted-foreground p-2 bg-background/40 rounded-md flex items-center gap-2">
                 <Info className="h-4 w-4 shrink-0" />

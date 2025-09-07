@@ -127,7 +127,7 @@ export default function Home() {
   //   };
   //   fetchGlobalStateData();
   // }, [globalStatePDA, program]);
-  // console.log(globalState)
+
 
   return (
     <div className="flex flex-col min-h-screen">

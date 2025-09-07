@@ -196,7 +196,7 @@ export function CustomStakingPage({
     const timeElapsed = now - userDetails.lastUpdateTime.toNumber();
     const newRewards =
       timeElapsed *
-      userDetails?.amount.toNumber() *
+      (userDetails?.amount.toNumber() / 10**poolDetails.decimals)*
       (poolDetails?.config.rewardRatePerTokenPerSecond.toNumber() / 10000);
 
     return userDetails?.pendingRewards.toNumber() + newRewards;
@@ -213,9 +213,9 @@ export function CustomStakingPage({
     const secondsInDay = 86400;
     return (
       (poolDetails.config.rewardRatePerTokenPerSecond.toNumber() / 10000) *
-      tokensStaked *
+      tokensStaked*
       secondsInDay
-    );
+    )/10**(poolDetails.decimals);
   }
   const claimable = calculateClaimable() / 10 ** poolDetails?.decimals;
   const canClaim = claimable > 0;
@@ -322,7 +322,6 @@ export function CustomStakingPage({
         }
       }
     } catch (error) {
-      console.log(error);
       setIsStaking(false);
       toast.error("Transaction failed. Please try again.");
     } finally {

@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/smithii_clone.json`.
  */
 export type SmithiiClone = {
-    "address": "3HY3jdzJgQQwehWPNNu25ewRJogd4P2c3b38UPPSvSA1",
+    "address": "7yJH3HYBnH4N4E8G9HKRThhwLfs6NmhGASQJyr5bmtb3",
     "metadata": {
         "name": "smithiiClone",
         "version": "0.1.0",
